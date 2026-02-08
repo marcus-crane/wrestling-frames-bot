@@ -27,6 +27,11 @@ resources:
       branch: main
       username: ((github-token.username))
       password: ((github-token.password))
+      git_config:
+        - name: user.name
+          value: Wrestling Frame Bot
+        - name: user.email
+          value: helper@utf9k.net
 
 jobs:
   - name: set-pipeline
@@ -145,6 +150,3 @@ jobs:
         params:
           repository: site
           rebase: true
-          author:
-            name: Wrestling Frame Bot
-            email: helper@utf9k.net
