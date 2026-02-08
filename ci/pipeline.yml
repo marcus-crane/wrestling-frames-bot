@@ -45,6 +45,8 @@ jobs:
               path: .
           outputs:
             - name: image
+          params:
+            IMAGE_PLATFORM: linux/amd64
           run:
             path: build
       - put: image
