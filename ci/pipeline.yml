@@ -20,6 +20,14 @@ resources:
     source:
       interval: 1h
 
+  - name: site
+    type: git
+    source:
+      uri: https://github.com/marcus-crane/wrestling-frames.git
+      branch: main
+      username: ((github-token.username))
+      password: ((github-token.password))
+
 jobs:
   - name: set-pipeline
     plan:
@@ -61,6 +69,7 @@ jobs:
     plan:
       - get: schedule
         trigger: true
+      - get: site
       - task: run-bot
         config:
           platform: linux
@@ -68,6 +77,8 @@ jobs:
             type: registry-image
             source:
               repository: kroniak/ssh-client
+          outputs:
+            - name: frame-output
           params:
             SSH_PRIVATE_KEY: ((netcafe-ssh.private_key))
             SSH_HOST: ((netcafe-ssh.host))
@@ -80,8 +91,6 @@ jobs:
             BSKY_HANDLE: wrestlingframes.utf9k.net
             BSKY_PASSWORD: ((bsky_password))
             ANTHROPIC_API_KEY: ((anthropic_api_key))
-            GITHUB_USERNAME: ((github-token.username))
-            GITHUB_PASSWORD: ((github-token.password))
           run:
             path: sh
             args:
@@ -92,32 +101,49 @@ jobs:
                 chmod 600 ~/.ssh/id_ed25519
                 ssh-keyscan "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-                ssh marcus@"$SSH_HOST" bash -exc "'
-                  SITE_DIR=/tmp/wrestling-frames
-                  rm -rf \$SITE_DIR
-                  git clone \"https://${GITHUB_USERNAME}:${GITHUB_PASSWORD}@github.com/marcus-crane/wrestling-frames.git\" \$SITE_DIR
+                ssh marcus@"$SSH_HOST" rm -rf /tmp/wrestling-frames
+                ssh marcus@"$SSH_HOST" mkdir -p /tmp/wrestling-frames
 
-                  docker run --rm --pull always \
-                    --device /dev/dri:/dev/dri \
-                    -v \$SITE_DIR:\$SITE_DIR \
-                    -e PLEX_URL=\"${PLEX_URL}\" \
-                    -e PLEX_TOKEN=\"${PLEX_TOKEN}\" \
-                    -e PLEX_PPV_LIBRARY=\"${PLEX_PPV_LIBRARY}\" \
-                    -e PLEX_TV_LIBRARY=\"${PLEX_TV_LIBRARY}\" \
-                    -e TV_SHOW_FILTERS=\"${TV_SHOW_FILTERS}\" \
-                    -e PPV_WEIGHT=\"${PPV_WEIGHT}\" \
-                    -e BSKY_HANDLE=\"${BSKY_HANDLE}\" \
-                    -e BSKY_PASSWORD=\"${BSKY_PASSWORD}\" \
-                    -e ANTHROPIC_API_KEY=\"${ANTHROPIC_API_KEY}\" \
-                    -e HUGO_SITE_PATH=\$SITE_DIR \
-                    -e HUGO_SITE_PUSH=false \
-                    -e GIT_AUTHOR_NAME=\"Wrestling Frame Bot\" \
-                    -e GIT_AUTHOR_EMAIL=\"helper@utf9k.net\" \
-                    -e GIT_COMMITTER_NAME=\"Wrestling Frame Bot\" \
-                    -e GIT_COMMITTER_EMAIL=\"helper@utf9k.net\" \
-                    ghcr.io/marcus-crane/wrestling-frames-bot:latest \
-                    python wrestling_frame_bot.py
+                ssh marcus@"$SSH_HOST" docker run --rm --pull always \
+                  --device /dev/dri:/dev/dri \
+                  -v /tmp/wrestling-frames:/tmp/wrestling-frames \
+                  -e PLEX_URL="$PLEX_URL" \
+                  -e PLEX_TOKEN="$PLEX_TOKEN" \
+                  -e PLEX_PPV_LIBRARY="$PLEX_PPV_LIBRARY" \
+                  -e PLEX_TV_LIBRARY="$PLEX_TV_LIBRARY" \
+                  -e TV_SHOW_FILTERS="$TV_SHOW_FILTERS" \
+                  -e PPV_WEIGHT="$PPV_WEIGHT" \
+                  -e BSKY_HANDLE="$BSKY_HANDLE" \
+                  -e BSKY_PASSWORD="$BSKY_PASSWORD" \
+                  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+                  -e HUGO_SITE_PATH=/tmp/wrestling-frames \
+                  ghcr.io/marcus-crane/wrestling-frames-bot:latest \
+                  python wrestling_frame_bot.py
 
-                  cd \$SITE_DIR
-                  git push
-                '"
+                scp -r marcus@"$SSH_HOST":/tmp/wrestling-frames/content frame-output/
+
+      - task: merge-frame
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: alpine
+          inputs:
+            - name: site
+            - name: frame-output
+          outputs:
+            - name: site
+          run:
+            path: sh
+            args:
+              - -c
+              - cp -r frame-output/content/frames/* site/content/frames/
+
+      - put: site
+        params:
+          repository: site
+          rebase: true
+          author:
+            name: Wrestling Frame Bot
+            email: helper@utf9k.net

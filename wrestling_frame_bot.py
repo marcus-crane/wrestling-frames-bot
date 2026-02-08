@@ -745,9 +745,10 @@ def save_to_hugo_site(item_title, source, timestamp_secs, image_bytes, alt_text,
         print(f"  Hugo site path not found: {site_path}", file=sys.stderr)
         return None
 
-    from datetime import date
+    from datetime import datetime, timezone
 
-    today = date.today()
+    now = datetime.now(timezone.utc)
+    today = now.date()
     ts_display = format_timestamp_display(timestamp_secs)
 
     # Build slug: {date}-{slugified event}-{timestamp}
@@ -769,7 +770,7 @@ def save_to_hugo_site(item_title, source, timestamp_secs, image_bytes, alt_text,
     frontmatter = (
         f"---\n"
         f'title: "{item_title}"\n'
-        f"date: {today.isoformat()}T12:00:00Z\n"
+        f"date: {now.strftime('%Y-%m-%dT%H:%M:%SZ')}\n"
         f'timestamp: "{ts_display}"\n'
         f'source: "{source}"\n'
         f"shows:\n"
