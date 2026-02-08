@@ -42,7 +42,6 @@ BSKY_HANDLE = os.environ.get("BSKY_HANDLE", "")
 BSKY_PASSWORD = os.environ.get("BSKY_PASSWORD", "")
 HUGO_SITE_PATH = os.environ.get("HUGO_SITE_PATH", "")
 
-HUGO_SITE_PUSH = os.environ.get("HUGO_SITE_PUSH", "true").lower() == "true"
 
 # ---------------------------------------------------------------------------
 # Plex helpers
@@ -732,7 +731,7 @@ def generate_alt_text(image_bytes, item_title, timestamp_secs):
 # ---------------------------------------------------------------------------
 
 
-def save_to_hugo_site(item_title, source, timestamp_secs, image_bytes, alt_text, push=True):
+def save_to_hugo_site(item_title, source, timestamp_secs, image_bytes, alt_text):
     """Save a posted frame to the Hugo gallery site as a page bundle.
 
     Skips entirely if HUGO_SITE_PATH is not set.
@@ -783,22 +782,6 @@ def save_to_hugo_site(item_title, source, timestamp_secs, image_bytes, alt_text,
         f"{alt_text}\n"
     )
     (bundle_dir / "index.md").write_text(frontmatter)
-
-    # Git add, commit, optionally push
-    git_env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
-    git_args = {"cwd": site_path, "capture_output": True, "text": True, "env": git_env}
-
-    subprocess.run(["git", "pull", "--rebase"], **git_args)
-    subprocess.run(["git", "add", str(bundle_dir.relative_to(site_path))], **git_args)
-    commit_msg = f"Add frame: {item_title} ({ts_display})"
-    subprocess.run(["git", "commit", "-m", commit_msg], **git_args)
-
-    if push:
-        result = subprocess.run(["git", "push"], **git_args)
-        if result.returncode != 0:
-            print(f"  Git push failed: {result.stderr}", file=sys.stderr)
-    else:
-        print(f"  [DRY RUN] Committed but skipped push", file=sys.stderr)
 
     print(f"  Hugo page bundle: {bundle_dir}")
     return bundle_dir
@@ -920,14 +903,13 @@ def run_bot(dry_run=False):
             print(f"  Post text:\n{post_text}")
             print(f"  Alt text: {alt_text}")
 
-            # Save to Hugo site (commit only, no push)
-            save_to_hugo_site(item_title, source, chosen_ts, image_bytes, alt_text, push=False)
+            save_to_hugo_site(item_title, source, chosen_ts, image_bytes, alt_text)
 
         else:
             print("Posting to Bluesky...")
             post_to_bluesky(item_title, chosen_ts, image_bytes, image_alt=alt_text)
 
-            save_to_hugo_site(item_title, source, chosen_ts, image_bytes, alt_text, push=HUGO_SITE_PUSH)
+            save_to_hugo_site(item_title, source, chosen_ts, image_bytes, alt_text)
 
 
     print("Done!")
