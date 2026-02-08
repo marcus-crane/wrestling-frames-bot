@@ -1,0 +1,6 @@
+config.env
+bot.log
+__pycache__/
+*.pyc
+dry_run_output/
+benchmark_output/

@@ -1,0 +1,8 @@
+plexapi
+atproto
+anthropic
+Pillow
+numpy
+python-dotenv
+requests
+opencv-python

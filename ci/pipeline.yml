@@ -1,0 +1,115 @@
+resources:
+  - name: repo
+    type: git
+    source:
+      uri: https://github.com/marcus-crane/wrestling-frame-bot.git
+      branch: main
+
+  - name: image
+    type: registry-image
+    source:
+      repository: ghcr.io/marcus-crane/wrestling-frame-bot
+      tag: latest
+      username: ((github-token.username))
+      password: ((github-token.password))
+
+  - name: schedule
+    type: time
+    source:
+      interval: 1h
+
+jobs:
+  - name: set-pipeline
+    plan:
+      - get: repo
+        trigger: true
+      - set_pipeline: self
+        file: repo/ci/pipeline.yml
+
+  - name: build-image
+    plan:
+      - get: repo
+        trigger: true
+      - task: build
+        privileged: true
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: concourse/oci-build-task
+          inputs:
+            - name: repo
+              path: .
+          outputs:
+            - name: image
+          run:
+            path: build
+      - put: image
+        params:
+          image: image/image.tar
+
+  - name: wrestling-frames
+    plan:
+      - get: schedule
+        trigger: true
+      - task: run-bot
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: kroniak/ssh-client
+          params:
+            SSH_PRIVATE_KEY: ((netcafe-ssh.private_key))
+            SSH_HOST: ((netcafe-ssh.host))
+            PLEX_URL: ((plex_url))
+            PLEX_TOKEN: ((plex_token))
+            PLEX_PPV_LIBRARY: Wrestling (PPVs)
+            PLEX_TV_LIBRARY: Wrestling (TV)
+            TV_SHOW_FILTERS: Raw,SmackDown
+            PPV_WEIGHT: "0.25"
+            BSKY_HANDLE: wrestlingframes.utf9k.net
+            BSKY_PASSWORD: ((bsky_password))
+            ANTHROPIC_API_KEY: ((anthropic_api_key))
+            GITHUB_USERNAME: ((github-token.username))
+            GITHUB_PASSWORD: ((github-token.password))
+          run:
+            path: sh
+            args:
+              - -exc
+              - |
+                mkdir -p ~/.ssh
+                echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+                chmod 600 ~/.ssh/id_ed25519
+                ssh-keyscan "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+                ssh marcus@"$SSH_HOST" bash -exc "'
+                  SITE_DIR=/tmp/wrestling-frames
+                  rm -rf \$SITE_DIR
+                  git clone \"https://${GITHUB_USERNAME}:${GITHUB_PASSWORD}@github.com/marcus-crane/wrestling-frames.git\" \$SITE_DIR
+
+                  docker run --rm \
+                    --device /dev/dri:/dev/dri \
+                    -v \$SITE_DIR:\$SITE_DIR \
+                    -e PLEX_URL=\"${PLEX_URL}\" \
+                    -e PLEX_TOKEN=\"${PLEX_TOKEN}\" \
+                    -e PLEX_PPV_LIBRARY=\"${PLEX_PPV_LIBRARY}\" \
+                    -e PLEX_TV_LIBRARY=\"${PLEX_TV_LIBRARY}\" \
+                    -e TV_SHOW_FILTERS=\"${TV_SHOW_FILTERS}\" \
+                    -e PPV_WEIGHT=\"${PPV_WEIGHT}\" \
+                    -e BSKY_HANDLE=\"${BSKY_HANDLE}\" \
+                    -e BSKY_PASSWORD=\"${BSKY_PASSWORD}\" \
+                    -e ANTHROPIC_API_KEY=\"${ANTHROPIC_API_KEY}\" \
+                    -e HUGO_SITE_PATH=\$SITE_DIR \
+                    -e HUGO_SITE_PUSH=false \
+                    -e GIT_AUTHOR_NAME=\"Wrestling Frame Bot\" \
+                    -e GIT_AUTHOR_EMAIL=\"helper@utf9k.net\" \
+                    -e GIT_COMMITTER_NAME=\"Wrestling Frame Bot\" \
+                    -e GIT_COMMITTER_EMAIL=\"helper@utf9k.net\" \
+                    ghcr.io/marcus-crane/wrestling-frame-bot:latest \
+                    python wrestling_frame_bot.py
+
+                  cd \$SITE_DIR
+                  git push
+                '"
