@@ -74,7 +74,6 @@ jobs:
     plan:
       - get: schedule
         trigger: true
-      - get: site
       - task: run-bot
         config:
           platform: linux
@@ -128,7 +127,8 @@ jobs:
 
                 scp -r marcus@"$SSH_HOST":/tmp/wrestling-frames/content frame-output/
 
-      - task: merge-frame
+      - get: site
+      - task: update-frames-website
         config:
           platform: linux
           image_resource:
