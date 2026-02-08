@@ -50,6 +50,7 @@ jobs:
           image: image/image.tar
 
   - name: wrestling-frames
+    public: false
     plan:
       - get: schedule
         trigger: true
