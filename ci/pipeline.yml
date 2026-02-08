@@ -45,8 +45,11 @@ jobs:
               path: .
           outputs:
             - name: image
+          caches:
+            - path: cache
           params:
             IMAGE_PLATFORM: linux/amd64
+            BUILDKIT_CACHE_DIR: cache
           run:
             path: build
       - put: image
