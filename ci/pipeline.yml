@@ -97,7 +97,7 @@ jobs:
                   rm -rf \$SITE_DIR
                   git clone \"https://${GITHUB_USERNAME}:${GITHUB_PASSWORD}@github.com/marcus-crane/wrestling-frames.git\" \$SITE_DIR
 
-                  docker run --rm \
+                  docker run --rm --pull always \
                     --device /dev/dri:/dev/dri \
                     -v \$SITE_DIR:\$SITE_DIR \
                     -e PLEX_URL=\"${PLEX_URL}\" \
