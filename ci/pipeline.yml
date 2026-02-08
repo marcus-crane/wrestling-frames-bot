@@ -104,21 +104,22 @@ jobs:
                 ssh marcus@"$SSH_HOST" rm -rf /tmp/wrestling-frames
                 ssh marcus@"$SSH_HOST" mkdir -p /tmp/wrestling-frames
 
-                ssh marcus@"$SSH_HOST" docker run --rm --pull always \
+                ssh marcus@"$SSH_HOST" "docker run --rm --pull always \
+                  --user \$(id -u):\$(id -g) \
                   --device /dev/dri:/dev/dri \
                   -v /tmp/wrestling-frames:/tmp/wrestling-frames \
-                  -e PLEX_URL="$PLEX_URL" \
-                  -e PLEX_TOKEN="$PLEX_TOKEN" \
-                  -e PLEX_PPV_LIBRARY="$PLEX_PPV_LIBRARY" \
-                  -e PLEX_TV_LIBRARY="$PLEX_TV_LIBRARY" \
-                  -e TV_SHOW_FILTERS="$TV_SHOW_FILTERS" \
-                  -e PPV_WEIGHT="$PPV_WEIGHT" \
-                  -e BSKY_HANDLE="$BSKY_HANDLE" \
-                  -e BSKY_PASSWORD="$BSKY_PASSWORD" \
-                  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+                  -e 'PLEX_URL=$PLEX_URL' \
+                  -e 'PLEX_TOKEN=$PLEX_TOKEN' \
+                  -e 'PLEX_PPV_LIBRARY=$PLEX_PPV_LIBRARY' \
+                  -e 'PLEX_TV_LIBRARY=$PLEX_TV_LIBRARY' \
+                  -e 'TV_SHOW_FILTERS=$TV_SHOW_FILTERS' \
+                  -e 'PPV_WEIGHT=$PPV_WEIGHT' \
+                  -e 'BSKY_HANDLE=$BSKY_HANDLE' \
+                  -e 'BSKY_PASSWORD=$BSKY_PASSWORD' \
+                  -e 'ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY' \
                   -e HUGO_SITE_PATH=/tmp/wrestling-frames \
                   ghcr.io/marcus-crane/wrestling-frames-bot:latest \
-                  python wrestling_frame_bot.py
+                  python wrestling_frame_bot.py"
 
                 scp -r marcus@"$SSH_HOST":/tmp/wrestling-frames/content frame-output/
 
