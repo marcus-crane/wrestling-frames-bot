@@ -134,7 +134,7 @@ jobs:
           image_resource:
             type: registry-image
             source:
-              repository: alpine
+              repository: alpine/git
           inputs:
             - name: site
             - name: frame-output
@@ -143,8 +143,12 @@ jobs:
           run:
             path: sh
             args:
-              - -c
-              - cp -r frame-output/content/frames/* site/content/frames/
+              - -exc
+              - |
+                cp -r frame-output/content/frames/* site/content/frames/
+                cd site
+                git add -A
+                git diff --cached --quiet && echo "No changes to commit" || git commit -m "Add frame"
 
       - put: site
         params:
