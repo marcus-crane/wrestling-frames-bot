@@ -109,6 +109,7 @@ jobs:
                 ssh marcus@"$SSH_HOST" mkdir -p /tmp/wrestling-frames
 
                 ssh marcus@"$SSH_HOST" "docker run --rm --pull always \
+                  --name wrestling-frames-bot \
                   --user \$(id -u):\$(id -g) \
                   --device /dev/dri:/dev/dri \
                   -v /tmp/wrestling-frames:/tmp/wrestling-frames \
