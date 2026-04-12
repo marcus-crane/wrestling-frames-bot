@@ -18,7 +18,7 @@ resources:
   - name: schedule
     type: time
     source:
-      interval: 1h
+      interval: 8h
 
   - name: site
     type: git
